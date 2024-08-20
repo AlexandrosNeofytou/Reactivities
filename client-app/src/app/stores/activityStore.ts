@@ -8,7 +8,7 @@ export class ActivityStore
     activityRegistry=new Map<String,Activity>();
     selectedActivity:Activity | undefined=undefined;
     loading=false;
-    initialLoading=true;
+    initialLoading=false;
     editMode:boolean=false;
 
     get activitiesByDate()
@@ -26,13 +26,7 @@ export class ActivityStore
         this.initialLoading=state;
     }
 
-    setActivity=(id:string)=>{
-        this.selectedActivity=this.activityRegistry.get(id);
-    }
 
-    cancelSelectedActivity=()=>{
-        this.selectedActivity=undefined;
-    }
 
     createActivity=async (activity:Activity)=>{
         this.loading=true;
@@ -54,7 +48,52 @@ export class ActivityStore
 
     }
 
-    updateActivitya=async(activity:Activity)=>{
+    loadActivity=async(id:string):Promise<Activity>=>{
+        let activity=this.getActivity(id);
+
+        if(activity)
+        {
+            this.selectedActivity=activity;
+
+        }
+        else 
+        {
+            this.setLoadingInitial(true);
+            
+            try {
+                
+                activity=await agent.Activities.details(id); 
+
+                this.setActivity(activity);
+
+    
+                runInAction(()=>{
+                
+                    this.selectedActivity=activity;
+                })
+              
+
+
+            } catch (error:any) {
+                throw new Error(error);
+            }
+            
+            this.setLoadingInitial(false);
+
+
+
+        }
+
+
+        return activity;
+
+
+
+    }
+
+
+
+    updateActivity=async(activity:Activity)=>{
         this.loading=true;
         
         try {
@@ -93,24 +132,8 @@ export class ActivityStore
 
     }
 
-    openForm=(id?:string)=>{
-        if(id)
-        {
-            this.setActivity(id);
-        }
-        else 
-        {
-            this.cancelSelectedActivity();
-        }
 
-        console.log(this.selectedActivity);
-        this.editMode=true;
-    }
-
-    closeForm=()=>{
-        this.editMode=false;
-
-    }
+ 
 
     loadActivities=async ()=>{
         this.setLoadingInitial(true);
@@ -120,9 +143,7 @@ export class ActivityStore
             this.activityRegistry.clear();
             
             response.forEach(activity=>{
-                activity.date=activity.date.split("T")[0];
-                this.activityRegistry.set(activity.id,activity);
-
+                this.setActivity(activity)
             });
             
         } catch (error) {
@@ -133,6 +154,16 @@ export class ActivityStore
 
 
     }
+
+    private setActivity=(activity:Activity)=>{
+        activity.date=activity.date.split("T")[0];
+        this.activityRegistry.set(activity.id,activity);
+    }
+
+    private getActivity=(id:string)=>{
+        return this.activityRegistry.get(id);
+    }
+
 
     
 }
